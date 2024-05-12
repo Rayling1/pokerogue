@@ -12,6 +12,7 @@ import { achvs } from "./system/achv";
 import { pokemonPrevolutions } from "./data/pokemon-evolutions";
 import { EggTier } from "./data/enums/egg-type";
 import PokemonInfoContainer from "./ui/pokemon-info-container";
+import { DexAttr } from '../system/game-data';
 
 export class EggHatchPhase extends Phase {
   private egg: Egg;
@@ -358,44 +359,65 @@ export class EggHatchPhase extends Phase {
           speciesOverride = getLegendaryGachaSpeciesForTimestamp(this.scene, this.egg.timestamp);
       }
 
+	  let chosenSpecies;
       if (speciesOverride) {
         const pokemonSpecies = getPokemonSpecies(speciesOverride);
         ret = this.scene.addPlayerPokemon(pokemonSpecies, 1, undefined, undefined, undefined, false);
       } else {
-        let minStarterValue: integer;
-        let maxStarterValue: integer;
 
-        switch (this.egg.tier) {
-          case EggTier.GREAT:
-            minStarterValue = 4;
-            maxStarterValue = 5;
-            break;
-          case EggTier.ULTRA:
-            minStarterValue = 6;
-            maxStarterValue = 7;
-            break;
-          case EggTier.MASTER:
-            minStarterValue = 8;
-            maxStarterValue = 9;
-            break;
-          default:
-            minStarterValue = 1;
-            maxStarterValue = 3;
-            break;
-        }
 
+		// weights to determine the cost of the starter, 
+		// starters with cost 1 have a weight of 8, cost 2 a weight of 7, and so on
+		var i;
+		const weights = [8,7,6,5,4,3,2,1].map((sum => value => sum += value)(0));
+
+        let random = Utils.randSeedInt(weights.slice(-1));
+		for (i = 1; i < weights.length; i++)
+			if (random < weights[i-1])
+				break;
+				
+        let starterCost = i;
+		
         const ignoredSpecies = [ Species.PHIONE, Species.MANAPHY, Species.ETERNATUS ];
 
         let speciesPool = Object.keys(speciesStarters)
-          .filter(s => speciesStarters[s] >= minStarterValue && speciesStarters[s] <= maxStarterValue)
+          .filter(s => speciesStarters[s] == starterCost)
           .map(s => parseInt(s) as Species)
           .filter(s => !pokemonPrevolutions.hasOwnProperty(s) && getPokemonSpecies(s).isObtainable() && ignoredSpecies.indexOf(s) === -1);
 
+		// getting list of uncaught starters
+		let uncaughtSpecies = speciesPool.filter(s => !this.scene.gameData.dexData[s].caughtAttr);
+	
+		
+		// if all starters caught, get list of uncaught level 1 shinies
+		if (!uncaughtSpecies.length)
+			uncaughtSpecies = speciesPool.filter(s => this.scene.gameData.getSpeciesDexAttrProps(getPokemonSpecies(s), 
+				this.scene.gameData.getSpeciesDefaultDexAttr(getPokemonSpecies(s),false,true)).variant === 0);
+				
+		// if all level 1 shinies caught, get list of uncaught level 2 shinies
+		if (!uncaughtSpecies.length)
+			uncaughtSpecies = speciesPool.filter(s => this.scene.gameData.getSpeciesDexAttrProps(getPokemonSpecies(s), 
+				this.scene.gameData.getSpeciesDefaultDexAttr(getPokemonSpecies(s)),false,true).variant === 1);
+		
+		
+		// 50% chance of picking from the uncaught list instead of the full list
+		// change the number 50 below if you want a higher/lower rate.
+		// because we filtered by starter cost first it is possible that you 
+		// get a duplicate even if 
+		random = Utils.randSeedInt(100)
+		if (random < 50 && uncaughtSpecies.length)
+		  speciesPool = uncaughtSpecies
+		
+
+		// assigning weights to each mon in pool
         let totalWeight = 0;
         const speciesWeights = [];
         for (let speciesId of speciesPool) {
-          let weight = Math.floor((((maxStarterValue - speciesStarters[speciesId]) / ((maxStarterValue - minStarterValue) + 1)) * 1.5 + 1) * 100);
+		  // setting all weights to 8
+          let weight = 8
           const species = getPokemonSpecies(speciesId);
+		  // this is default code that makes regionals rarer, 
+		  // yeet the next 2 lines if you dont want regionals to be rarer
           if (species.isRegional())
             weight = Math.floor(weight / (species.isRareRegional() ? 8 : 2));
           speciesWeights.push(totalWeight + weight);
@@ -411,14 +433,56 @@ export class EggHatchPhase extends Phase {
             break;
           }
         }
-
+		chosenSpecies = species;
         const pokemonSpecies = getPokemonSpecies(species);
 
         ret = this.scene.addPlayerPokemon(pokemonSpecies, 1, undefined, undefined, undefined, false);
       }
+	  
+	  // there are 3 methods of shiny generation, just comment out the methods you don't want.
+	  // for those that don't know, comments are added using // at the beginning of a line or
+	  // by surrounding multiple line with /* and */
+	  
+	  // 1. the two lines below are the default shiny generation method
+	  
+      //ret.trySetShiny(this.egg.gachaType === GachaType.SHINY ? 1024 : 512);
+      //ret.variant = ret.shiny ? ret.generateVariant() : 0;
+	  
+	  
+	  // 2. the commented section below it is a method that upgrades 
+	  // the shiny level of a pokemon if it has been caught before
+	  
+	  
+	  const caught = this.scene.gameData.dexData[chosenSpecies].caughtAttr;
+	  const dexAttr = this.scene.gameData.getSpeciesDefaultDexAttr(getPokemonSpecies(chosenSpecies),false,true)
+	  const props = this.scene.gameData.getSpeciesDexAttrProps(getPokemonSpecies(chosenSpecies), dexAttr);
+	  const shiny = props.shiny;
+	  const variant = props.variant;
+	  if (caught)
+	    ret.trySetShiny(65536);
+	  if (shiny)
+		ret.variant = Math.min(2,variant +1);
+      
+	  	  
+		  
+	  // 3. the next commented section assigns shinyness by weights
+	  
+	  /*
+	  let x = 0;
+	  const shinyWeights = [this.egg.gachaType === GachaType.SHINY ? 400 : 900, 90, 9, 1].map((sum => value => sum += value)(0));
 
-      ret.trySetShiny(this.egg.gachaType === GachaType.SHINY ? 1024 : 512);
-      ret.variant = ret.shiny ? ret.generateVariant() : 0;
+      let random = Utils.randSeedInt(shinyWeights.slice(-1));
+      
+	  for (let j = 0; j < shinyWeights.length; j++){
+		if (random <= shinyWeights[j]){
+		  x = j;
+		  break;
+		}
+	  }
+	  ret.trySetShiny(x ? 65536 : 1);
+	  ret.variant = Math.max(0,x-1);
+      */
+
 
       const secondaryIvs = Utils.getIvsFromId(Utils.randSeedInt(4294967295));
 
