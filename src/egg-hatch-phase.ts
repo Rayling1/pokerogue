@@ -353,6 +353,7 @@ export class EggHatchPhase extends Phase {
         const rand = Utils.randSeedInt(8);
   
         speciesOverride = rand ? Species.PHIONE : Species.MANAPHY;
+        chosenSpecies = rand ? Species.PHIONE : Species.MANAPHY;
       } else if (this.egg.tier === EggTier.MASTER
         && this.egg.gachaType === GachaType.LEGENDARY) {
         if (!Utils.randSeedInt(2))
