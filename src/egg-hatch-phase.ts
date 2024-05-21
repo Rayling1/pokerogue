@@ -385,7 +385,9 @@ export class EggHatchPhase extends Phase {
           .filter(s => speciesStarters[s] == starterCost)
           .map(s => parseInt(s) as Species)
           .filter(s => !pokemonPrevolutions.hasOwnProperty(s) && getPokemonSpecies(s).isObtainable() && ignoredSpecies.indexOf(s) === -1);
-
+	if (starterCost == 8){
+		peciesPool.push(Species.ARCEUS);
+	}
 		// getting list of uncaught starters
 		let uncaughtSpecies = speciesPool.filter(s => !this.scene.gameData.dexData[s].caughtAttr);
 	
