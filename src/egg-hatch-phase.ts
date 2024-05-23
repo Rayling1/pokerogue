@@ -346,6 +346,7 @@ export class EggHatchPhase extends Phase {
   generatePokemon(): PlayerPokemon {
     let ret: PlayerPokemon;
     let speciesOverride: Species;
+    let chosenSpecies;
 
     this.scene.executeWithSeedOffset(() => {
 
@@ -360,7 +361,6 @@ export class EggHatchPhase extends Phase {
           speciesOverride = getLegendaryGachaSpeciesForTimestamp(this.scene, this.egg.timestamp);
       }
 
-	  let chosenSpecies;
       if (speciesOverride) {
         const pokemonSpecies = getPokemonSpecies(speciesOverride);
         ret = this.scene.addPlayerPokemon(pokemonSpecies, 1, undefined, undefined, undefined, false);
