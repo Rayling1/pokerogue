@@ -368,9 +368,9 @@ export class EggHatchPhase extends Phase {
 
 
 		// weights to determine the cost of the starter, 
-		// starters with cost 1 have a weight of 8, cost 2 a weight of 7, and so on
+		// starters with cost 1 have a weight of 9, cost 2 a weight of 8, and so on
 		var i;
-		const weights = [8,7,6,5,4,3,2,1].map((sum => value => sum += value)(0));
+		const weights = [9,8,7,6,5,4,3,2,1].map((sum => value => sum += value)(0));
 
         let random = Utils.randSeedInt(weights.slice(-1));
 		for (i = 1; i < weights.length; i++)
@@ -385,9 +385,7 @@ export class EggHatchPhase extends Phase {
           .filter(s => speciesStarters[s] == starterCost)
           .map(s => parseInt(s) as Species)
           .filter(s => !pokemonPrevolutions.hasOwnProperty(s) && getPokemonSpecies(s).isObtainable() && ignoredSpecies.indexOf(s) === -1);
-	if (starterCost == 8){
-		speciesPool.push(Species.ARCEUS);
-	}
+	
 		// getting list of uncaught starters
 		let uncaughtSpecies = speciesPool.filter(s => !this.scene.gameData.dexData[s].caughtAttr);
 	
